@@ -1,0 +1,30 @@
+# Gradle
+.gradle/
+build/
+*/build/
+gradlew.bat
+
+# Local config
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Signing
+*.jks
+*.keystore
+*.apk
+*.aab
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kotlin
+*.class
