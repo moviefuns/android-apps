@@ -2,20 +2,13 @@
 
 A suite of beautiful, privacy-focused Android apps built for self-hosted infrastructure. All apps connect to your own server — no data collection, no ads, no third-party services.
 
-<p align="center">
-  <img src="nota/app/src/main/res/drawable/nota_logo.png" height="60" alt="Nóta"/>
-</p>
-
 ## Apps
 
 | App | Description | Package | Status |
 |-----|-------------|---------|--------|
-| [Nóta](nota/) | Nextcloud Notes client | 'com.brbrs.nota' | ✅ Available on Google Play |
-| [Merk](merk/) | Nextcloud Bookmarks client | 'com.brbrs.merk' | 🔧 In development |
-| [Blik](blik/) | Screenshot manager with Nextcloud upload | 'com.brbrs.blik' | 🔧 In development |
-| [Abbo](abbo/) | Subscription tracker | 'com.brbrs.abbo' | 📋 Planned |
-| [Vinci](vinci/) | Personal CRM | 'com.brbrs.vinci' | 📋 Planned |
-| [Ora](ora/) | Time tracker | 'com.brbrs.ora' | 📋 Planned |
+| [Nóta](nota/) | Nextcloud Notes client | 'com.brbrs.nota' | ⏳ In review on Google Play |
+| [Merk](merk/) | Nextcloud Bookmarks client | 'com.brbrs.merk' | ⏳ In review on Google Play |
+| [Blik](blik/) | Screenshot manager with Nextcloud upload | 'com.brbrs.blik' | ⏳ In review on Google Play |
 
 ## Philosophy
 
