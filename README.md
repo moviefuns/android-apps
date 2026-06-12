@@ -6,9 +6,9 @@ A suite of beautiful, privacy-focused Android apps built for self-hosted infrast
 
 | App | Description | Package | Status |
 |-----|-------------|---------|--------|
-| [Nóta](nota/) | Nextcloud Notes client | 'com.brbrs.nota' | ⏳ In review on Google Play |
-| [Merk](merk/) | Nextcloud Bookmarks client | 'com.brbrs.merk' | ⏳ In review on Google Play |
-| [Blik](blik/) | Screenshot manager with Nextcloud upload | 'com.brbrs.blik' | ⏳ In review on Google Play |
+| [Nóta](nota/) | Nextcloud Notes client | 'com.brbrs.nota' | ✅ Live on Google Play (https://play.google.com/store/apps/details?id=com.brbrs.nota) |
+| [Merk](merk/) | Nextcloud Bookmarks client | 'com.brbrs.merk' | ✅ Live on Google Play (https://play.google.com/store/apps/details?id=com.brbrs.merk) |
+| [Blik](blik/) | Screenshot manager with Nextcloud upload | 'com.brbrs.blik' | ✅ Live on Google Play (https://play.google.com/store/apps/details?id=com.brbrs.blik) |
 
 ## Philosophy
 
