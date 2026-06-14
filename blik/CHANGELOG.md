@@ -4,6 +4,14 @@ All notable changes to Blik are documented here.
 
 ---
 
+## [1.0.4] — 2026-06-14
+
+### Fixed
+- Nextcloud Login Flow v2: poll endpoint URL is now rewritten to match the host the user typed, fixing authentication on instances behind reverse proxies, Tailscale MagicDNS, or other setups where the server-provided host differs from the address used to connect
+- Manifest merger conflict resolved for WorkManager initialization
+
+---
+
 ## [1.0.3] — 2026-06-12
 
 ### Added

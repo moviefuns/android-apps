@@ -76,6 +76,35 @@ class AuthManager @Inject constructor(
         return url
     }
 
+    /**
+     * Rewrites the scheme+host+port portion of [serverProvidedUrl] to match
+     * [userTypedBase], keeping the path/query/fragment intact.
+     *
+     * Nextcloud's Login Flow v2 "poll.endpoint" can point to an internal
+     * hostname or IP that differs from the address the user actually typed
+     * (e.g. Tailscale MagicDNS names, reverse-proxy subdomains). Using the
+     * server-provided host directly can fail to resolve or connect, so we
+     * substitute the user-typed origin instead.
+     */
+    private fun rewriteToUserHost(serverProvidedUrl: String, userTypedBase: String): String {
+        return try {
+            val userBase = java.net.URI(normalizeUrl(userTypedBase))
+            val provided = java.net.URI(serverProvidedUrl)
+            java.net.URI(
+                userBase.scheme,
+                provided.userInfo,
+                userBase.host,
+                userBase.port,
+                provided.path,
+                provided.query,
+                provided.fragment
+            ).toString()
+        } catch (e: Exception) {
+            serverProvidedUrl
+        }
+    }
+
+
     suspend fun initiateLoginFlow(serverUrl: String): Result<LoginFlowInit> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -92,9 +121,10 @@ class AuthManager @Inject constructor(
                     throw Exception("Unexpected response — is this a Nextcloud instance?")
                 }
                 val pollObj = json.getJSONObject("poll")
+                val rawPollEndpoint = pollObj.getString("endpoint")
                 LoginFlowInit(
                     loginUrl     = json.getString("login"),
-                    pollEndpoint = pollObj.getString("endpoint"),
+                    pollEndpoint = rewriteToUserHost(rawPollEndpoint, base),
                     token        = pollObj.getString("token"),
                 )
             }
