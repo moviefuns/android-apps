@@ -271,7 +271,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(32.dp))
 
             Text(
-                stringResource(R.string.app_footer, "1.2.1"),
+                stringResource(R.string.app_footer, "1.2.2"),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

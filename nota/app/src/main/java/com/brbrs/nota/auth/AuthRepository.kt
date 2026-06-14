@@ -17,6 +17,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -113,13 +114,36 @@ class AuthRepository @Inject constructor(
             check(response.isSuccessful) { "Server returned ${response.code}" }
             val json = org.json.JSONObject(response.body!!.string())
             val poll = json.getJSONObject("poll")
+            val pollEndpoint = rewritePollEndpoint(poll.getString("endpoint"), serverUrl)
             LoginFlowInit(
                 poll  = PollEndpoint(
                     token    = poll.getString("token"),
-                    endpoint = poll.getString("endpoint"),
+                    endpoint = pollEndpoint,
                 ),
                 login = json.getString("login"),
             )
+        }
+    }
+
+    /**
+     * The poll endpoint returned by the server may point to an internal hostname/IP
+     * that differs from the address the user typed (e.g. Tailscale IPs, internal
+     * hostnames behind a reverse proxy, or custom subdomain setups). Rewrite the
+     * poll endpoint's scheme+host+port to match the user-typed server URL, keeping
+     * the path/query from the server response intact.
+     */
+    private fun rewritePollEndpoint(pollEndpoint: String, userTypedServerUrl: String): String {
+        return try {
+            val pollUrl = pollEndpoint.toHttpUrl()
+            val userUrl = userTypedServerUrl.trimEnd('/').toHttpUrl()
+            pollUrl.newBuilder()
+                .scheme(userUrl.scheme)
+                .host(userUrl.host)
+                .port(userUrl.port)
+                .build()
+                .toString()
+        } catch (e: Exception) {
+            pollEndpoint
         }
     }
 

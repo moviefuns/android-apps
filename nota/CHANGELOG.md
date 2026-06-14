@@ -2,6 +2,13 @@
 
 All notable changes to Nóta are documented here.
 
+## [1.2.2] - 2026-06-14
+
+### Fixed
+- Nextcloud Login Flow v2 poll URL is now rewritten to match the server address the user entered, fixing "failed to connect" errors and login hangs on Tailscale/subdomain setups where the server returns an internal hostname or IP for polling
+
+---
+
 ## [1.2.1] - 2026-06-12
 
 ### Fixed
