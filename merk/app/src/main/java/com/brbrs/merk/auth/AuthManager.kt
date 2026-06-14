@@ -13,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -79,6 +80,40 @@ class AuthManager @Inject constructor(
         return url
     }
 
+    /**
+     * The server may return a poll endpoint pointing at an internal hostname/IP
+     * (e.g. behind Tailscale or a reverse proxy with a different subdomain) that
+     * differs from the address the user actually typed in. Rewrite the scheme,
+     * host and port of the poll endpoint to match the user-entered base URL,
+     * keeping the path and query the server provided.
+     */
+    private fun rewritePollEndpoint(pollEndpoint: String, userBase: String): String {
+        return try {
+            val userUrl = userBase.toHttpUrl()
+            val pollUrl = pollEndpoint.toHttpUrl()
+            if (userUrl.scheme == pollUrl.scheme &&
+                userUrl.host == pollUrl.host &&
+                userUrl.port == pollUrl.port
+            ) {
+                pollEndpoint
+            } else {
+                android.util.Log.d(
+                    "MerkAuth",
+                    "Rewriting poll endpoint host from ${pollUrl.host} to ${userUrl.host}"
+                )
+                pollUrl.newBuilder()
+                    .scheme(userUrl.scheme)
+                    .host(userUrl.host)
+                    .port(userUrl.port)
+                    .build()
+                    .toString()
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("MerkAuth", "Failed to rewrite poll endpoint, using as-is", e)
+            pollEndpoint
+        }
+    }
+
     suspend fun initiateLoginFlow(serverUrl: String): Result<LoginFlowInit> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -96,10 +131,12 @@ class AuthManager @Inject constructor(
                     throw Exception("Unexpected response — is this a Nextcloud instance?")
                 }
                 val pollObj = json.getJSONObject("poll")
-                android.util.Log.d("MerkAuth", "pollEndpoint = ${pollObj.getString("endpoint")}")
+                val rawPollEndpoint = pollObj.getString("endpoint")
+                val pollEndpoint = rewritePollEndpoint(rawPollEndpoint, base)
+                android.util.Log.d("MerkAuth", "pollEndpoint = $rawPollEndpoint -> $pollEndpoint")
                 LoginFlowInit(
                     loginUrl     = json.getString("login"),
-                    pollEndpoint = pollObj.getString("endpoint"),
+                    pollEndpoint = pollEndpoint,
                     token        = pollObj.getString("token"),
                 )
             }

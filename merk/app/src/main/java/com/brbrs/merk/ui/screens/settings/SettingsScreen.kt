@@ -270,7 +270,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(32.dp))
 
             Text(
-                "Merk 1.0.2 · by andrei BARBURAS",
+                "Merk 1.0.4 · by andrei BARBURAS",
                 style     = MaterialTheme.typography.labelSmall,
                 color     = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

@@ -2,6 +2,13 @@
 
 All notable changes to Merk are documented here.
 
+## [1.0.4] - 2026-06-14
+
+### Fixed
+- Login Flow v2 poll URL rewriting (Tailscale/subdomain setups): the poll endpoint returned by the server can point to an internal hostname/IP that doesn't match the user-entered address. The app now rewrites the poll URL's scheme/host/port to match what the user typed, preventing "failed to connect" errors and login hangs (confirmed with Tailscale + custom subdomain on IodéOS 6/Android 15).
+
+---
+
 ## [1.0.3] - 2026-06-12
 
 ### Added
