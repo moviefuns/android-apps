@@ -1,11 +1,12 @@
 # Barburas Android Apps
 
-A suite of beautiful, privacy-focused Android apps built for self-hosted infrastructure. All apps connect to your own server — no data collection, no ads, no third-party services.
+A suite of beautiful, privacy-focused Android apps built for self-hosted infrastructure. All apps connect to your own server; no data collection, no ads, no third-party services.
 
 ## Apps
 
 | App | Description | Package | Status |
 |-----|-------------|---------|--------|
+| [Vinci](vinci/) | Nextcloud Personal CRM | 'com.brbrs.vinci' | ✅ [Live on Google Play](https://play.google.com/store/apps/details?id=com.brbrs.vinci) |
 | [Nóta](nota/) | Nextcloud Notes client | 'com.brbrs.nota' | ✅ [Live on Google Play](https://play.google.com/store/apps/details?id=com.brbrs.nota) |
 | [Merk](merk/) | Nextcloud Bookmarks client | 'com.brbrs.merk' | ✅ [Live on Google Play](https://play.google.com/store/apps/details?id=com.brbrs.merk) |
 | [Blik](blik/) | Screenshot manager with Nextcloud upload | 'com.brbrs.blik' | ✅ [Live on Google Play](https://play.google.com/store/apps/details?id=com.brbrs.blik) |
