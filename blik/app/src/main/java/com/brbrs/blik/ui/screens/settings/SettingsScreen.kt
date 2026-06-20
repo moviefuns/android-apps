@@ -455,7 +455,7 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(32.dp))
-            Text("Blik 1.0.4 · by andrei BARBURAS",
+            Text("Blik 1.0.8 · by andrei BARBURAS",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

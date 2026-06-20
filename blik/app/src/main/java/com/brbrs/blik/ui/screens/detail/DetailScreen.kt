@@ -1,5 +1,8 @@
 package com.brbrs.blik.ui.screens.detail
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -53,6 +56,25 @@ fun DetailScreen(
     val cardTint = if (isDark) Color.White else Color.Black
 
     LaunchedEffect(localPath) { vm.load(localPath) }
+
+    // Android 11+ system delete confirmation dialog
+    val deleteLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            vm.onDeleteConfirmed(onBack)
+        } else {
+            vm.onDeleteCancelled()
+        }
+    }
+
+    // Launch system dialog whenever a pending IntentSender appears
+    val pendingSender = state.pendingDeleteSender
+    LaunchedEffect(pendingSender) {
+        pendingSender?.let {
+            deleteLauncher.launch(IntentSenderRequest.Builder(it).build())
+        }
+    }
 
     val bgBrush = if (isDark)
         Brush.verticalGradient(listOf(NavyDeep, NavyMid, NavyDeep))

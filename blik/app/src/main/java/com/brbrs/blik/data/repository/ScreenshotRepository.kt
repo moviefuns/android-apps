@@ -289,20 +289,95 @@ class ScreenshotRepository @Inject constructor(
         all.filter { it.localPath in paths }.forEach { dao.update(it.copy(isBlurred = blur)) }
     }
 
-    /** Delete only the Blik record — leaves both local file and Nextcloud untouched. */
+    /** Delete the local file + the Blik record. Nextcloud copy untouched.
+     *  Returns an IntentSender if a system confirmation dialog is required (Android 10+),
+     *  null if the file was deleted immediately (Android 9-) or already missing. */
+    suspend fun deleteLocalFile(entity: ScreenshotEntity): android.content.IntentSender? =
+        withContext(Dispatchers.IO) {
+            val mediaUri = resolveMediaStoreUri(Uri.parse(entity.localPath))
+            if (mediaUri == null) {
+                // Can't find it in MediaStore — just remove the record
+                dao.deleteByPath(entity.localPath)
+                return@withContext null
+            }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                // Android 11+: createDeleteRequest shows system dialog; caller must launch it
+                // and call deleteRecord() on success
+                val pendingIntent = MediaStore.createDeleteRequest(
+                    context.contentResolver, listOf(mediaUri)
+                )
+                pendingIntent.intentSender
+            } else {
+                // Android 9/10: direct delete works with WRITE_EXTERNAL_STORAGE / ownership
+                try {
+                    context.contentResolver.delete(mediaUri, null, null)
+                } catch (e: Exception) {
+                    android.util.Log.w("BlikRepo", "deleteLocalFile: ${e.message}")
+                }
+                dao.deleteByPath(entity.localPath)
+                null
+            }
+        }
+
+    /** Delete multiple local files. Returns an IntentSender for bulk system confirmation
+     *  on Android 11+, or null if all were handled immediately. */
+    suspend fun deleteLocalFiles(entities: List<ScreenshotEntity>): android.content.IntentSender? =
+        withContext(Dispatchers.IO) {
+            val mediaUris = entities.mapNotNull { resolveMediaStoreUri(Uri.parse(it.localPath)) }
+            if (mediaUris.isEmpty()) {
+                entities.forEach { dao.deleteByPath(it.localPath) }
+                return@withContext null
+            }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                MediaStore.createDeleteRequest(context.contentResolver, mediaUris).intentSender
+            } else {
+                mediaUris.forEach { uri ->
+                    try { context.contentResolver.delete(uri, null, null) }
+                    catch (e: Exception) { android.util.Log.w("BlikRepo", "deleteLocalFiles: ${e.message}") }
+                }
+                entities.forEach { dao.deleteByPath(it.localPath) }
+                null
+            }
+        }
+
+    /** Remove only the Room record (call after the system delete dialog confirms). */
     suspend fun deleteRecord(entity: ScreenshotEntity) = withContext(Dispatchers.IO) {
         dao.deleteByPath(entity.localPath)
     }
 
-    /** Delete the local file via SAF + the Blik record. Nextcloud copy untouched. */
-    suspend fun deleteLocalFile(entity: ScreenshotEntity) = withContext(Dispatchers.IO) {
-        try {
-            val uri = Uri.parse(entity.localPath)
-            android.provider.DocumentsContract.deleteDocument(context.contentResolver, uri)
-        } catch (e: Exception) {
-            android.util.Log.w("BlikRepo", "deleteLocalFile: ${e.message}")
+    /** Remove Room records for multiple entities (call after bulk system delete dialog confirms). */
+    suspend fun deleteRecords(entities: List<ScreenshotEntity>) = withContext(Dispatchers.IO) {
+        entities.forEach { dao.deleteByPath(it.localPath) }
+    }
+
+    /**
+     * Resolves a SAF document URI to its MediaStore URI by querying via display name.
+     * SAF URIs encode the path as "primary:DCIM/Screenshots/file.jpg" in the document ID.
+     */
+    private fun resolveMediaStoreUri(safUri: Uri): Uri? {
+        // Extract filename from the SAF URI
+        val docId = try {
+            android.provider.DocumentsContract.getDocumentId(safUri)
+        } catch (e: Exception) { safUri.lastPathSegment }
+
+        val fileName = docId?.substringAfterLast("/")?.substringAfterLast(":")
+            ?: safUri.lastPathSegment?.substringAfterLast("/")
+            ?: return null
+
+        val projection = arrayOf(MediaStore.Images.Media._ID)
+        val selection  = "${MediaStore.Images.Media.DISPLAY_NAME} = ?"
+        context.contentResolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            projection, selection, arrayOf(fileName), null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
+                return android.content.ContentUris.withAppendedId(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id
+                )
+            }
         }
-        dao.deleteByPath(entity.localPath)
+        return null
     }
 
     /** Delete from Nextcloud (image + .md sidecar). Local file and record kept, status reset to PENDING. */
@@ -319,14 +394,16 @@ class ScreenshotRepository @Inject constructor(
         dao.update(entity.copy(uploadStatus = UploadStatus.PENDING, remotePath = "", remoteFolder = ""))
     }
 
-    /** Delete local file + Nextcloud copy + Blik record. */
-    suspend fun deleteEverywhere(entity: ScreenshotEntity) = withContext(Dispatchers.IO) {
-        deleteFromNextcloud(entity)
-        deleteLocalFile(entity)
-    }
+    /** Delete local file + Nextcloud copy + Blik record.
+     *  Returns IntentSender if system confirmation is needed (Android 11+). */
+    suspend fun deleteEverywhere(entity: ScreenshotEntity): android.content.IntentSender? =
+        withContext(Dispatchers.IO) {
+            deleteFromNextcloud(entity)
+            deleteLocalFile(entity)
+        }
 
     // Legacy alias used by multi-select delete — deletes local file + record
-    suspend fun delete(entity: ScreenshotEntity) = deleteLocalFile(entity)
+    suspend fun delete(entity: ScreenshotEntity): android.content.IntentSender? = deleteLocalFile(entity)
 
     // ── Private helpers ────────────────────────────────────────────────────────
 

@@ -33,7 +33,9 @@ data class GalleryUiState(
     val isScanning: Boolean = false,
     val scanError: String? = null,
     val selectedPaths: Set<String> = emptySet(),
-    val snackbarMessage: String? = null,   // upload success / failure toast
+    val snackbarMessage: String? = null,
+    /** Non-null when Android 11+ requires a system delete confirmation dialog. */
+    val pendingDeleteSender: android.content.IntentSender? = null,
 ) {
     val isSelecting: Boolean get() = selectedPaths.isNotEmpty()
 }
@@ -54,6 +56,9 @@ class GalleryViewModel @Inject constructor(
     private val _scanErr       = MutableStateFlow<String?>(null)
     private val _selectedPaths = MutableStateFlow<Set<String>>(emptySet())
     private val _snackbar      = MutableStateFlow<String?>(null)
+    private val _pendingDelete = MutableStateFlow<android.content.IntentSender?>(null)
+    // Entities awaiting system delete confirmation
+    private var _pendingDeleteEntities: List<ScreenshotEntity> = emptyList()
 
     // Refresh categories whenever the screenshot list changes
     private val _categories: StateFlow<List<String>> = repo.observeAll()
@@ -109,6 +114,8 @@ class GalleryViewModel @Inject constructor(
         state.copy(selectedPaths = sel)
     }.combine(_snackbar) { state, msg ->
         state.copy(snackbarMessage = msg)
+    }.combine(_pendingDelete) { state, sender ->
+        state.copy(pendingDeleteSender = sender)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, GalleryUiState())
 
     fun onFilterSelected(filter: GalleryFilter) { _filter.value = filter; _category.value = null }
@@ -136,9 +143,32 @@ class GalleryViewModel @Inject constructor(
         if (paths.isEmpty()) return
         viewModelScope.launch {
             val all = repo.observeAll().firstOrNull() ?: emptyList()
-            all.filter { it.localPath in paths }.forEach { repo.delete(it) }
+            val toDelete = all.filter { it.localPath in paths }
+            val sender = repo.deleteLocalFiles(toDelete)
+            if (sender != null) {
+                _pendingDeleteEntities = toDelete
+                _pendingDelete.value = sender
+                // Records deleted after system dialog confirms via onDeleteConfirmed()
+            } else {
+                _selectedPaths.value = emptySet()
+            }
+        }
+    }
+
+    /** Called after the system delete dialog returns RESULT_OK. */
+    fun onDeleteConfirmed() {
+        viewModelScope.launch {
+            repo.deleteRecords(_pendingDeleteEntities)
+            _pendingDeleteEntities = emptyList()
+            _pendingDelete.value = null
             _selectedPaths.value = emptySet()
         }
+    }
+
+    /** Called if the user cancelled the system delete dialog. */
+    fun onDeleteCancelled() {
+        _pendingDeleteEntities = emptyList()
+        _pendingDelete.value = null
     }
 
     fun toggleBlur(entity: ScreenshotEntity) {

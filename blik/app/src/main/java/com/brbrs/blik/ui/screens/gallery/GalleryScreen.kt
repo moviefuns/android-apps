@@ -1,5 +1,8 @@
 package com.brbrs.blik.ui.screens.gallery
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -68,6 +71,20 @@ private fun GalleryContent(
         state.snackbarMessage?.let { msg ->
             snackbarHostState.showSnackbar(message = msg, duration = SnackbarDuration.Short)
             vm.dismissSnackbar()
+        }
+    }
+
+    // Android 11+ system delete confirmation dialog
+    val deleteLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) vm.onDeleteConfirmed()
+        else vm.onDeleteCancelled()
+    }
+    val pendingDeleteSender = state.pendingDeleteSender
+    LaunchedEffect(pendingDeleteSender) {
+        pendingDeleteSender?.let {
+            deleteLauncher.launch(IntentSenderRequest.Builder(it).build())
         }
     }
 

@@ -4,11 +4,10 @@ All notable changes to Blik are documented here.
 
 ---
 
-## [1.0.4] — 2026-06-14
+## [1.0.8] — 2026-06-20
 
 ### Fixed
-- Nextcloud Login Flow v2: poll endpoint URL is now rewritten to match the host the user typed, fixing authentication on instances behind reverse proxies, Tailscale MagicDNS, or other setups where the server-provided host differs from the address used to connect
-- Manifest merger conflict resolved for WorkManager initialization
+- Deleting screenshots from the device now works correctly on Android 10 and above
 
 ---
 
