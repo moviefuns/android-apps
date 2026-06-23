@@ -10,7 +10,13 @@ Part of the [BARBURAS](https://barburas.com) open-source Android suite.
 
 ## Screenshots
 
-<!-- screenshots -->
+| Map View | List View | Search/Add |
+|------|----------------|---------------|
+| ![Map View](fastlane/metadata/android/en-US/images/phoneScreenshots/01.png) | ![List View](fastlane/metadata/android/en-US/images/phoneScreenshots/02.png) | ![Search/Add](fastlane/metadata/android/en-US/images/phoneScreenshots/03.png) |
+
+| Add View | Settings | Dark Mode |
+|----------|----------|-----------|
+| ![Add View](fastlane/metadata/android/en-US/images/phoneScreenshots/04.png) | ![Settings](fastlane/metadata/android/en-US/images/phoneScreenshots/05.png) | ![Dark](fastlane/metadata/android/en-US/images/phoneScreenshots/06.png) |
 
 ---
 
