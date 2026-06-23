@@ -2,6 +2,7 @@ package com.brbrs.merk.ui.screens.list
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.brbrs.merk.auth.AuthManager
 import com.brbrs.merk.data.local.BookmarkEntity
 import com.brbrs.merk.data.repository.BookmarkRepository
 import com.brbrs.merk.tasks.TasksPreference
@@ -10,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import okhttp3.Credentials
 import javax.inject.Inject
 
 data class ListUiState(
@@ -20,6 +22,8 @@ data class ListUiState(
     val syncError: String?              = null,
     val tasksEnabled: Boolean           = false,
     val isDark: Boolean                 = true,
+    val serverUrl: String               = "",
+    val authHeader: String              = "",
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -28,6 +32,7 @@ class BookmarkListViewModel @Inject constructor(
     private val repo: BookmarkRepository,
     private val tasksPref: TasksPreference,
     private val themeRepo: ThemeRepository,
+    private val authManager: AuthManager,
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -38,10 +43,14 @@ class BookmarkListViewModel @Inject constructor(
     // Combine query+tag into a single flow first, then combine with the rest
     private val _filters = combine(_searchQuery, _selectedTag) { q, t -> q to t }
 
-    val uiState: StateFlow<ListUiState> = combine(
+    private val _context = combine(
         _filters, _isSyncing, _syncError, tasksPref.enabled, themeRepo.isDark,
     ) { (query, tag), syncing, error, tasks, dark ->
-        QueryContext(query, tag, syncing, error, tasks, dark)
+        QueryContext(query as String, tag as String?, syncing, error, tasks, dark, null)
+    }
+
+    val uiState: StateFlow<ListUiState> = combine(_context, authManager.credentials) { ctx, creds ->
+        ctx.copy(creds = creds)
     }.flatMapLatest { ctx ->
         val bookmarkFlow = when {
             ctx.query.isNotBlank() -> repo.search(ctx.query)
@@ -57,6 +66,10 @@ class BookmarkListViewModel @Inject constructor(
                 syncError    = ctx.error,
                 tasksEnabled = ctx.tasks,
                 isDark       = ctx.dark,
+                serverUrl    = ctx.creds?.serverUrl?.trimEnd('/') ?: "",
+                authHeader   = ctx.creds?.let {
+                    Credentials.basic(it.username, it.appPassword)
+                } ?: "",
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListUiState())
@@ -107,4 +120,5 @@ private data class QueryContext(
     val error: String?,
     val tasks: Boolean,
     val dark: Boolean,
+    val creds: com.brbrs.merk.auth.AuthCredentials?,
 )

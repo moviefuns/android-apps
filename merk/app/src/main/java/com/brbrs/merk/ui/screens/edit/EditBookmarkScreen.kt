@@ -1,5 +1,6 @@
 package com.brbrs.merk.ui.screens.edit
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -39,7 +41,11 @@ fun EditBookmarkScreen(
     val state by vm.uiState.collectAsState()
     val isDark = LocalIsDark.current
     val isEdit = state.id > 0
+    val keyboardController = LocalSoftwareKeyboardController.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Handle back gesture / back button — dismiss like the X button
+    BackHandler(enabled = !state.isSaved) { onDismiss() }
 
     val bgBrush = if (isDark) Brush.verticalGradient(listOf(NavyDeep, NavyMid))
                   else Brush.verticalGradient(listOf(LightBg, LightSurface2))
@@ -50,6 +56,8 @@ fun EditBookmarkScreen(
 
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
+            // Dismiss keyboard first so snackbar appears above it
+            keyboardController?.hide()
             val msg = if (isEdit) "Bookmark updated" else "Bookmark saved"
             snackbarHostState.showSnackbar(message = msg, duration = SnackbarDuration.Short)
             onSaved()

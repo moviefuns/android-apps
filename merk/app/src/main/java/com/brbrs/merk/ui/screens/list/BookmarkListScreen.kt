@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -242,6 +241,8 @@ fun BookmarkListScreen(
                             bookmark     = bookmark,
                             tasksEnabled = state.tasksEnabled,
                             isDark       = isDark,
+                            serverUrl    = state.serverUrl,
+                            authHeader   = state.authHeader,
                             onClick      = { onOpen(bookmark.id) },
                             onEdit       = { onEdit(bookmark.id) },
                             onDelete     = { vm.onDeleteBookmark(bookmark.id) },
@@ -332,6 +333,8 @@ private fun BookmarkCard(
     bookmark: BookmarkEntity,
     tasksEnabled: Boolean,
     isDark: Boolean,
+    serverUrl: String,
+    authHeader: String,
     onClick: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -353,30 +356,14 @@ private fun BookmarkCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment     = Alignment.Top,
         ) {
-            // Avatar initial with crimson gradient
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text  = (bookmark.title.firstOrNull { it.isLetter() }
-                        ?: bookmark.url.firstOrNull { it.isLetter() }
-                        ?: 'B').uppercaseChar().toString(),
-                    style      = MaterialTheme.typography.titleSmall,
-                    color      = if (isDark) White else LightText,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+            // Favicon with initial fallback
+            FaviconImage(
+                bookmarkId = bookmark.id,
+                serverUrl  = serverUrl,
+                authHeader = authHeader,
+                title      = bookmark.title.ifBlank { bookmark.url },
+                size       = 38.dp,
+            )
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
