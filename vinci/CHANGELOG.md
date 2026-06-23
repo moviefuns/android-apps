@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ---
 
+## [1.3.4]
+### Added
+- Multi-device restore: interactions and starred contacts now restore correctly on a second device (tablet, new phone).
+- Restore screen shows progress while importing and a summary when complete.
+- New "Sync starred to Nextcloud" button in Settings — pushes starred contacts and follow-ups to Nextcloud, with a spinner and confirmation message.
+- Each interaction file now embeds the contact identifier, making restore reliable across devices regardless of how contacts were synced.
+- Both plain and bold field formats are now supported when reading older interaction files.
+
+### Fixed
+- Deleted interactions are now removed from Nextcloud so they no longer reappear after a restore.
+- Starring or unstarring a contact now syncs to Nextcloud immediately.
+- Restore and sync actions now show a Snackbar notification when starting and when complete.
+
+---
+
 ## [1.1.9]
 ### Fixed
 - Deleting an interaction now correctly resets the contact's last-interaction timestamp in the People section on Home.

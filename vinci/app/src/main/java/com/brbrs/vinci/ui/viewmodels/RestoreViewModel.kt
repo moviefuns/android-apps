@@ -37,19 +37,23 @@ class RestoreViewModel @Inject constructor(
             }
 
             // 2. Restore contacts (starred, followUp) and interaction logs
-            val result = webDavRepository.restoreFromNextcloud()
-
-            if (result.error != null) {
-                _uiState.update { it.copy(isRestoring = false, error = result.error) }
-            } else {
-                _uiState.update {
-                    it.copy(
-                        isRestoring      = false,
-                        contactsRestored = result.contactsRestored,
-                        logsImported     = result.logsImported,
-                        done             = true,
-                    )
+            runCatching {
+                webDavRepository.restoreFromNextcloud()
+            }.onSuccess { result ->
+                if (result.error != null) {
+                    _uiState.update { it.copy(isRestoring = false, error = result.error) }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isRestoring      = false,
+                            contactsRestored = result.contactsRestored,
+                            logsImported     = result.logsImported,
+                            done             = true,
+                        )
+                    }
                 }
+            }.onFailure { e ->
+                _uiState.update { it.copy(isRestoring = false, error = e.message ?: "Unexpected error") }
             }
         }
     }

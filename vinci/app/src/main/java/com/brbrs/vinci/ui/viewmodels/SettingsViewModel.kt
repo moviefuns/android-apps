@@ -30,6 +30,7 @@ data class SettingsUiState(
     val tasksInstalled: Boolean = false,
     val loggedOut: Boolean = false,
     val isRestoring: Boolean = false,
+    val isSyncing: Boolean = false,
     val restoreResult: String? = null,
     val isExporting: Boolean = false,
     val exportError: String? = null,
@@ -48,14 +49,11 @@ class SettingsViewModel @Inject constructor(
     private val webDavRepository: WebDavRepository,
     private val displayPrefs: DisplayPreferencesRepository,
     private val callLogDao: CallLogDao,
+    private val contactDao: com.brbrs.vinci.data.ContactDao,
     private val attachmentDao: com.brbrs.vinci.data.AttachmentDao,
 ) : ViewModel() {
 
     private val _loggedOut      = MutableStateFlow(false)
-    private val _isRestoring    = MutableStateFlow(false)
-    private val _restoreResult  = MutableStateFlow<String?>(null)
-    private val _isExporting    = MutableStateFlow(false)
-    private val _exportError    = MutableStateFlow<String?>(null)
     private val _exportFile     = MutableStateFlow<File?>(null)
     private val _cacheInfo      = MutableStateFlow(0L to 0)
     val exportFile: StateFlow<File?> = _exportFile.asStateFlow()
@@ -87,14 +85,25 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { displayPrefs.setAttachmentsKeepLocal(enabled) }
     }
 
+    // Bundle transient operation state into one flow so combine() stays under the 5-flow limit
+    private data class OpState(
+        val isRestoring: Boolean = false,
+        val isSyncing: Boolean = false,
+        val restoreResult: String? = null,
+        val isExporting: Boolean = false,
+        val exportError: String? = null,
+    )
+    private val _opState = MutableStateFlow(OpState())
+
     val uiState: StateFlow<SettingsUiState> = combine(
         authRepository.session,
         authRepository.appLockEnabled,
         tasksPref.enabled,
         combine(_loggedOut, _cacheInfo) { loggedOut, cache -> loggedOut to cache },
-        displayPrefs.preferences,
-    ) { session, appLock, tasks, loggedOutAndCache, display ->
+        combine(displayPrefs.preferences, _opState) { display, op -> display to op },
+    ) { session, appLock, tasks, loggedOutAndCache, displayAndOp ->
         val (loggedOut, cache) = loggedOutAndCache
+        val (display, op) = displayAndOp
         SettingsUiState(
             serverUrl      = session?.serverUrl ?: "",
             username       = session?.username  ?: "",
@@ -103,10 +112,11 @@ class SettingsViewModel @Inject constructor(
             tasksEnabled   = tasks,
             tasksInstalled = TasksOrgHelper.isInstalled(context),
             loggedOut      = loggedOut,
-            isRestoring    = _isRestoring.value,
-            restoreResult  = _restoreResult.value,
-            isExporting    = _isExporting.value,
-            exportError    = _exportError.value,
+            isRestoring    = op.isRestoring,
+            isSyncing      = op.isSyncing,
+            restoreResult  = op.restoreResult,
+            isExporting    = op.isExporting,
+            exportError    = op.exportError,
             defaultCountryCode      = display.defaultCountryCode,
             attachmentsKeepLocal    = display.attachmentsKeepLocal,
             cachedAttachmentsSize   = cache.first,
@@ -131,16 +141,39 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { tasksPref.setEnabled(enabled) }
     }
 
+    fun syncStarredNow() {
+        viewModelScope.launch {
+            _opState.update { it.copy(isSyncing = true) }
+            _opState.update { it.copy(restoreResult = "Syncing starred contacts…") }
+            val starred = contactDao.getStarredContactsOnce()
+            var synced = 0
+            starred.forEach { contact ->
+                runCatching {
+                    webDavRepository.writeIndexMd(
+                        contactUid  = contact.cardavUid,
+                        contactName = contact.displayName,
+                        isStarred   = true,
+                        followUpDue = contact.followUpDue,
+                    )
+                    synced++
+                }
+            }
+            _opState.update { it.copy(isSyncing = false) }
+            _opState.update { it.copy(restoreResult = "Synced $synced starred contacts to Nextcloud.") }
+        }
+    }
+
     fun restoreNow() {
         viewModelScope.launch {
-            _isRestoring.value = true
-            _restoreResult.value = null
+            _opState.update { it.copy(isRestoring = true) }
+            _opState.update { it.copy(restoreResult = "Starting restore…") }
             val result = webDavRepository.restoreFromNextcloud()
-            _isRestoring.value = false
-            _restoreResult.value = if (result.error != null)
+            _opState.update { it.copy(isRestoring = false) }
+            _opState.update { it.copy(restoreResult = if (result.error != null)
                 "Restore failed: ${result.error}"
             else
                 "Restored ${result.contactsRestored} contacts and ${result.logsImported} interactions."
+            ) }
         }
     }
 
@@ -155,8 +188,8 @@ class SettingsViewModel @Inject constructor(
 
     fun exportAsMarkdown() {
         viewModelScope.launch {
-            _isExporting.value = true
-            _exportError.value = null
+            _opState.update { it.copy(isExporting = true) }
+            _opState.update { it.copy(exportError = null) }
             try {
                 val logs = callLogDao.getAllLogs().first()
                 val dateFmt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
@@ -186,17 +219,17 @@ class SettingsViewModel @Inject constructor(
                 val file = writeExportFile("vinci-interactions.md", sb.toString())
                 _exportFile.value = file
             } catch (e: Exception) {
-                _exportError.value = "Export failed: ${e.message}"
+                _opState.update { it.copy(exportError = "Export failed: ${e.message}") }
             } finally {
-                _isExporting.value = false
+                _opState.update { it.copy(isExporting = false) }
             }
         }
     }
 
     fun exportAsCsv() {
         viewModelScope.launch {
-            _isExporting.value = true
-            _exportError.value = null
+            _opState.update { it.copy(isExporting = true) }
+            _opState.update { it.copy(exportError = null) }
             try {
                 val logs = callLogDao.getAllLogs().first()
                 val dateFmt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
@@ -217,9 +250,9 @@ class SettingsViewModel @Inject constructor(
                 val file = writeExportFile("vinci-interactions.csv", sb.toString())
                 _exportFile.value = file
             } catch (e: Exception) {
-                _exportError.value = "Export failed: ${e.message}"
+                _opState.update { it.copy(exportError = "Export failed: ${e.message}") }
             } finally {
-                _isExporting.value = false
+                _opState.update { it.copy(isExporting = false) }
             }
         }
     }

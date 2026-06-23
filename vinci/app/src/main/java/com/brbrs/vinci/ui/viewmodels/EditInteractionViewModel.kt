@@ -203,6 +203,8 @@ class EditInteractionViewModel @Inject constructor(
                 val latestTs = callLogDao.getLatestTimestampForContact(contactId) ?: 0L
                 contactDao.updateLastCall(contactId, latestTs)
             }
+            // Also delete from Nextcloud so it doesn't reappear on restore
+            runCatching { webDavRepository.deleteCallLog(log) }
             _uiState.update { it.copy(deleted = true) }
         }
     }

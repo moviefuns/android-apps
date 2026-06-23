@@ -92,7 +92,18 @@ class ContactsTabViewModel @Inject constructor(
     /** Stars all currently-selected contacts (used by the bulk action bar). */
     fun starSelected() {
         viewModelScope.launch {
-            _selectedIds.value.forEach { id -> contactDao.setStarred(id, true) }
+            _selectedIds.value.forEach { id ->
+                contactDao.setStarred(id, true)
+                val contact = contactDao.getContactById(id) ?: return@forEach
+                runCatching {
+                    webDavRepository.writeIndexMd(
+                        contactUid  = contact.cardavUid,
+                        contactName = contact.displayName,
+                        isStarred   = true,
+                        followUpDue = contact.followUpDue,
+                    )
+                }
+            }
             exitSelectionMode()
         }
     }
@@ -100,8 +111,36 @@ class ContactsTabViewModel @Inject constructor(
     /** Unstars all currently-selected contacts. */
     fun unstarSelected() {
         viewModelScope.launch {
-            _selectedIds.value.forEach { id -> contactDao.setStarred(id, false) }
+            _selectedIds.value.forEach { id ->
+                contactDao.setStarred(id, false)
+                val contact = contactDao.getContactById(id) ?: return@forEach
+                runCatching {
+                    webDavRepository.writeIndexMd(
+                        contactUid  = contact.cardavUid,
+                        contactName = contact.displayName,
+                        isStarred   = false,
+                        followUpDue = contact.followUpDue,
+                    )
+                }
+            }
             exitSelectionMode()
+        }
+    }
+
+    /** Pushes index.md to Nextcloud for all currently-starred contacts. Used for initial sync. */
+    fun syncStarredToNextcloud() {
+        viewModelScope.launch {
+            val starred = contactDao.getStarredContactsOnce()
+            starred.forEach { contact ->
+                runCatching {
+                    webDavRepository.writeIndexMd(
+                        contactUid  = contact.cardavUid,
+                        contactName = contact.displayName,
+                        isStarred   = true,
+                        followUpDue = contact.followUpDue,
+                    )
+                }
+            }
         }
     }
 

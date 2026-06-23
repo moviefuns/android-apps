@@ -1,8 +1,8 @@
 # Vinci — Personal CRM for Nextcloud
 
-> Stay in touch with the people who matter; synced to your own Nextcloud.
+> Stay in touch with the people who matter — synced to your own Nextcloud.
 
-[![Get it on Google Play](https://img.shields.io/badge/Google%20Play-Download-brightgreen?logo=google-play&logoColor=white)](https://play.google.com/store/apps/details?id=com.brbrs.vinci)
+[![Get it on Google Play](https://img.shields.io/badge/Google%20Play-Download-brightgreen?logo=google-play&logoColor=white)](https://play.google.com/store/apps/dev?id=6842866278906089090)
 [![F-Droid](https://img.shields.io/badge/F--Droid-coming%20soon-blue?logo=f-droid)](https://f-droid.org)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-purple.svg)](LICENSE)
 

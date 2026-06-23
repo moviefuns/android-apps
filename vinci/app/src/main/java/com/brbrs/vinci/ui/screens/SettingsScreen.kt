@@ -33,9 +33,16 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context  = LocalContext.current
     val isDark   = LocalIsDark.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.loggedOut) {
         if (uiState.loggedOut) onLoggedOut()
+    }
+
+    LaunchedEffect(uiState.restoreResult) {
+        uiState.restoreResult?.let { msg ->
+            snackbarHostState.showSnackbar(msg, duration = SnackbarDuration.Short)
+        }
     }
 
     Box(
@@ -252,11 +259,37 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // Restore from Nextcloud
+            // Data section
             SettingsSectionLabel("Data")
             Spacer(Modifier.height(8.dp))
             SettingsCard(isDark) {
                 Column {
+                    // Sync starred contacts to Nextcloud
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.CloudUpload, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text("Sync starred to Nextcloud", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Push starred contacts and follow-ups to Nextcloud", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        if (uiState.isSyncing) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+                        } else {
+                            TextButton(onClick = viewModel::syncStarredNow) {
+                                Text("Sync", color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+                    // Restore from Nextcloud
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -268,10 +301,6 @@ fun SettingsScreen(
                             Column {
                                 Text("Restore from Nextcloud", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                                 Text("Reimport starred contacts, follow-ups and interactions", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                if (uiState.restoreResult != null) {
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(uiState.restoreResult!!, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                                }
                             }
                         }
                         if (uiState.isRestoring) {
@@ -388,13 +417,20 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(32.dp))
             Text(
-                "Vinci 1.0.0 · by andrei BARBURAS",
+                "Vinci 1.3.4 · by andrei BARBURAS",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
             )
         }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 16.dp),
+        )
     }
 }
 

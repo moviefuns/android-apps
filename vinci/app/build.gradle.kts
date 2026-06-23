@@ -14,8 +14,8 @@ android {
         applicationId = "com.brbrs.vinci"
         minSdk = 28
         targetSdk = 35
-        versionCode = 20
-        versionName = "1.1.9"
+        versionCode = 35
+        versionName = "1.3.4"
     }
 
     buildTypes {
@@ -37,6 +37,10 @@ android {
     kotlinOptions { jvmTarget = "17" }
 
     buildFeatures { compose = true }
+
+    lint {
+        disable += "NullSafeMutableLiveData"
+    }
 }
 
 ksp {

@@ -47,6 +47,9 @@ interface ContactDao {
     @Query("SELECT * FROM contacts WHERE isStarred = 1 ORDER BY displayName ASC")
     fun getStarredContacts(): Flow<List<ContactEntity>>
 
+    @Query("SELECT * FROM contacts WHERE isStarred = 1")
+    suspend fun getStarredContactsOnce(): List<ContactEntity>
+
     @Query("SELECT * FROM contacts WHERE id = :id")
     suspend fun getContactById(id: Long): ContactEntity?
     @Query("SELECT * FROM contacts WHERE phoneNumber = :phone LIMIT 1")
@@ -54,6 +57,15 @@ interface ContactDao {
 
     @Query("SELECT * FROM contacts WHERE cardavUid = :uid LIMIT 1")
     suspend fun getContactByUid(uid: String): ContactEntity?
+
+    @Query("SELECT * FROM contacts WHERE cardavUid LIKE :prefix || '%' LIMIT 1")
+    suspend fun getContactByUidPrefix(prefix: String): ContactEntity?
+
+    @Query("SELECT * FROM contacts WHERE displayName = :name LIMIT 1")
+    suspend fun getContactByExactName(name: String): ContactEntity?
+
+    @Query("SELECT * FROM contacts")
+    suspend fun getAllContactsSuspend(): List<ContactEntity>
 
     @Upsert
     suspend fun upsertContact(contact: ContactEntity)

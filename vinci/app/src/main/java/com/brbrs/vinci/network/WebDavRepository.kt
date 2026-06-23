@@ -171,6 +171,25 @@ class WebDavRepository @Inject constructor(
         authRepository.saveAddressBookUrl("")
     }
 
+    suspend fun deleteCallLog(log: CallLogEntity): Boolean = withContext(Dispatchers.IO) {
+        val session = authRepository.session.first() ?: return@withContext false
+        val client  = authedClient(session)
+        val base    = davBase(session)
+
+        val folderName = buildFolderName(log.contactName, log.contactUid)
+        val timestamp  = SimpleDateFormat("yyyy-MM-dd-HHmm", Locale.getDefault()).format(Date(log.callTimestamp))
+        val safeName   = URLEncoder.encode(folderName, "UTF-8")
+        val url        = "$base/Contacts/$safeName/calls/$timestamp.md"
+
+        return@withContext runCatching {
+            val resp = client.newCall(
+                Request.Builder().url(url).delete().build()
+            ).execute()
+            resp.close()
+            true
+        }.getOrDefault(false)
+    }
+
     suspend fun syncPendingLogs() {
         val unsynced = callLogDao.getUnsynced()
         for (log in unsynced) {
@@ -274,18 +293,59 @@ class WebDavRepository @Inject constructor(
         for (folder in contactFolders) {
             val folderUrl  = "$base/Contacts/${URLEncoder.encode(folder, "UTF-8")}"
 
-            // 2. Read index.md
-            val indexMd = fetchText(client, "$folderUrl/index.md") ?: continue
-            val meta    = parseIndexMd(indexMd)
-            val uid     = meta["contact_uid"] ?: continue
-            val name    = meta["contact_name"] ?: ""
-            val starred = meta["starred"] == "true"
-            val followUp= meta["follow_up_due"]?.toLongOrNull() ?: 0L
+            // 2. Read index.md (optional — only exists if contact was starred or had a follow-up)
+            val indexMd = fetchText(client, "$folderUrl/index.md")
+            val meta    = if (indexMd != null) parseIndexMd(indexMd) else emptyMap()
 
-            // 3. Find matching contact in Room by cardavUid
-            val contact = contactDao.getContactByUid(uid)
-            if (contact != null) {
-                // Restore starred and followUp - only if different to avoid unnecessary writes
+            // Derive uid from index.md if present; otherwise use the 8-char prefix from folder name
+            // e.g. "jose-van-gelder-31624847" → prefix "31624847" → matches full uid in Room via LIKE
+            val uidFromMeta   = meta["contact_uid"]
+            val uidPrefix     = folder.substringAfterLast('-').ifBlank { folder }
+
+            // 3. Resolve Room contact using four strategies in order:
+            // Strategy 1: exact uid from index.md
+            val byExactUid = if (uidFromMeta != null) contactDao.getContactByUid(uidFromMeta) else null
+
+            // Strategy 2: prefix match on folder suffix vs cardavUid
+            val byPrefix = if (byExactUid == null) contactDao.getContactByUidPrefix(uidPrefix) else null
+
+            // Strategy 3: Kotlin-side name match — try contact_name from index.md first (most accurate),
+            // then fall back to name derived from folder name
+            val contact = byExactUid ?: byPrefix ?: run {
+                // Lazy load — query Room only when uid strategies failed
+                // This avoids the race condition where contacts haven't synced yet at loop start
+                val nameFromMeta = meta["contact_name"]
+                val namePart = when {
+                    folder.contains('-') && folder.substringAfterLast('-').length == uidPrefix.length ->
+                        folder.dropLast(uidPrefix.length + 1)
+                    else -> folder
+                }
+
+                // Strategy 3a: exact display name from index.md
+                val byExactName = if (nameFromMeta != null)
+                    contactDao.getContactByExactName(nameFromMeta)
+                else null
+
+                // Strategy 3b: sanitised name match in Kotlin (handles emoji correctly)
+                val bySanitisedName = if (byExactName == null) {
+                    val allContacts = contactDao.getAllContactsSuspend()
+                    allContacts.find { c ->
+                        buildFolderName(c.displayName, "").trimEnd('-') == namePart
+                    }
+                } else null
+
+                byExactName ?: bySanitisedName
+            }
+
+
+            // Use the resolved full uid from Room so interaction logs are stored correctly
+            val uid  = contact?.cardavUid ?: uidFromMeta ?: uidPrefix
+            val name = meta["contact_name"] ?: contact?.displayName ?: ""
+
+            // Restore starred/followUp only when index.md was present
+            if (indexMd != null && contact != null) {
+                val starred  = meta["starred"] == "true"
+                val followUp = meta["follow_up_due"]?.toLongOrNull() ?: 0L
                 if (contact.isStarred != starred || contact.followUpDue != followUp) {
                     contactDao.setStarred(contact.id, starred)
                     contactDao.setFollowUp(contact.id, followUp)
@@ -293,17 +353,20 @@ class WebDavRepository @Inject constructor(
                 }
             }
 
-            // 4. List and parse calls/[timestamp].md files
+            // 4. List and parse calls/[timestamp].md files (always attempted)
             val callFiles = listWebDavFiles(client, "$folderUrl/calls")
             for (callFile in callFiles) {
                 if (!callFile.endsWith(".md")) continue
                 val callMd = fetchText(client, "$folderUrl/calls/${URLEncoder.encode(callFile, "UTF-8")}") ?: continue
                 val log    = parseCallLogMd(callMd, uid, name, contact?.id ?: -1L) ?: continue
 
-                // Skip if already in Room (same id = same timestamp)
+                // Insert if new; re-link if existing record was orphaned (contactId = -1)
                 val existing = callLogDao.getLogById(log.id)
                 if (existing == null) {
                     callLogDao.insertLog(log)
+                    logsImported++
+                } else if (existing.contactId == -1L && log.contactId != -1L) {
+                    callLogDao.insertLog(log) // REPLACE orphaned record with linked one
                     logsImported++
                 }
             }
@@ -413,14 +476,36 @@ class WebDavRepository @Inject constructor(
      * Uses timestamp derived from the filename pattern yyyy-MM-dd-HHmm
      * as the stable ID to prevent duplicates.
      */
-    private fun parseCallLogMd(content: String, contactUid: String, contactName: String, contactId: Long): CallLogEntity? {
+    private suspend fun parseCallLogMd(content: String, folderUid: String, folderName: String, folderContactId: Long): CallLogEntity? {
         return runCatching {
             val lines = content.lines()
 
             fun field(key: String): String {
-                val line = lines.firstOrNull { it.startsWith("**$key:**") } ?: return ""
-                return line.substringAfter("**$key:**").trim().trimEnd().removeSuffix("  ")
+                // Accept both **Key:** (current format) and plain Key: (older/manual format)
+                val line = lines.firstOrNull { it.startsWith("**$key:**") }
+                    ?: lines.firstOrNull { it.startsWith("$key:") }
+                    ?: return ""
+                return line.substringAfter("$key:").removePrefix("**").substringAfter(":**")
+                    .trim().trimEnd().removeSuffix("  ")
             }
+
+            // Read contact_uid/name embedded in file (new format) — fall back to folder-level values
+            val fileUid  = lines.firstOrNull { it.startsWith("contact_uid:") }
+                ?.substringAfter("contact_uid:")?.trim()
+            val fileName = lines.firstOrNull { it.startsWith("contact_name:") }
+                ?.substringAfter("contact_name:")?.trim()
+
+            // Resolve contact: prefer uid from file, fall back to folder uid, then name
+            val resolvedContact = if (fileUid != null) {
+                contactDao.getContactByUid(fileUid)
+                    ?: contactDao.getContactByUidPrefix(fileUid.take(8))
+                    ?: if (folderContactId != -1L) contactDao.getContactById(folderContactId) else null
+            } else {
+                if (folderContactId != -1L) contactDao.getContactById(folderContactId) else null
+            }
+            val contactUid  = resolvedContact?.cardavUid ?: fileUid ?: folderUid
+            val contactName = resolvedContact?.displayName ?: fileName ?: folderName
+            val contactId   = resolvedContact?.id ?: folderContactId
 
             val typeAndName = lines.firstOrNull { it.startsWith("# ") } ?: return null
             val interactionType = typeAndName.removePrefix("# ").substringBefore(" -").trim()
@@ -486,6 +571,9 @@ class WebDavRepository @Inject constructor(
         val followUp = if (log.followUpDays > 0) "Yes (${log.followUpDays} days)" else "No"
         val header   = "# ${log.interactionType} - ${log.contactName}"
         val meta = buildString {
+            appendLine("contact_uid: ${log.contactUid}")
+            appendLine("contact_name: ${log.contactName}")
+            appendLine()
             appendLine("**Date:** $date  ")
             if (log.interactionType == "Call") {
                 appendLine("**Direction:** ${if (log.isOutgoing) "Outgoing" else "Incoming"}  ")
