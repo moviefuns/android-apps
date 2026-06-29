@@ -2,7 +2,7 @@
 allprojects {
     repositories {
         google()
-        jcenter() // 4.x 时代常用的经典仓库
+//        jcenter() // 4.x 时代常用的经典仓库
         mavenCentral()
         maven { setUrl("https://jitpack.io") }
     }
