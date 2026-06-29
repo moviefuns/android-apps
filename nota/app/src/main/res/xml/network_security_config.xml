@@ -11,4 +11,11 @@
             <certificates src="user" />
         </trust-anchors>
     </base-config>
+    <domain-config>
+        <domain includeSubdomains="true">103.233.74.57</domain>
+        <trust-anchors>
+            <certificates src="@raw/cert.pem"/>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
 </network-security-config>
