@@ -13,7 +13,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 统一了注释和实际配置（这里以实际运行的 JDK 17 为准）
       - name: set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -24,36 +23,29 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x nota/gradlew
 
-# 强行在编译前通过 Echo 写入证书，百分之百保证文件存在且路径正确
       - name: Force Create Cert File
         run: |
           mkdir -p nota/app/src/main/res/raw
           echo "-----BEGIN CERTIFICATE-----" > nota/app/src/main/res/raw/cert.pem
-          echo "MIIDHDCCAgSgAwIBAgIJALCbRjjHmFn/MA0GCSqGSIb3DQEBCwUAMBoxGDAWBgNV
-BAMMD25leHRjbG91ZC5sb2NhbDAeFw0xNzA2MDYxMTI0MjBaFw0yNzA2MDYxMTI0
-MjBaMBoxGDAWBgNVBAMMD25leHRjbG91ZC5sb2NhbDCCASIwDQYJKoZIhvcNAQEB
-BQADggEPADCCAQoCggEBALnq2OJ5Bj0SUGkHI6Pq3po/oFYu5ZpfV9Hdgr1wz7+N
-CvHer386mxMizIg/h9etz95Z5WeRTQ5fAEmLiTGoFzy095nIsOZ3NkhZO5QFnpfY
-oTMyP8LmcqMoGCx1/uh6BkIyPSZezUIOnpzl0n59XX5IZ2M2znl7SCyz3anhQYNf
-/BMol1pcQpmqnZ3QyOSxgPHknhR3ux7jxW2hyyggVqPm3x8CchrOHFc6jpakTAFx
-voYx1ISyFcX41Q7YIaTvTg7QKm8oEzLxdZytGAQFVzPpLWaj7IMMbbL8hIYFI+1j
-64yDBoPEvk/XIAlt4sy/Z4b85+vOhh/x3HCpgQIBkSMCAwEAAaNlMGMwCQYDVR0T
-BAIwADAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwNwYDVR0RBDAwLoIP
-bmV4dGNsb3VkLmxvY2FsggVsb2NhbIIJbmV4dGNsb3Vkgglsb2NhbGhvc3QwDQYJ
-KoZIhvcNAQELBQADggEBABDuYl+pGTlAw8fo7RVjpQezBFsDdWNcCzApynk/48WP
-lactcxb3KUQHSes5BjUPLSUN1fYAsUZP5h4IA0lA3urs8QM/pwe0DiggBtW4G1Tu
-OuRKnKK2ndb6mFaeY43AiYKa7RQW5zKdoetfbhQp4EG8k3G5AB+Mu/3xL+RvnBzn
-l9NKsjurcZKaI/TYTyKpXKHUT4ecTM3JuisOKiCc8kjTaH3SaLINDdtxdtrrStRe
-bJURqxSfS7mIGec1fsWlMiKvEOTAC00Kyk8URGcUCkKRGRJMcFvugnk6oclfUaeX
-KU6JN6mNiufHiQoi07OA+9Uza/U4A8X40vfqLXpvENw=" >> nota/app/src/main/res/raw/cert.pem
+          echo "MIIDHDCCAgSgAwIBAgIJALCbRjjHmFn/MA0GCSqGSIb3DQEBCwUAMBoxGDAWBgNV" >> nota/app/src/main/res/raw/cert.pem
+          echo "BAMMD25leHRxdW91ZC5sb2NhbDAeFw0xNzA2MDYxMTI0MjBaFw0yNzA2MDYxMTI0" >> nota/app/src/main/res/raw/cert.pem
+          echo "MjBaMBoxGDAWBgNVBAMMD25leHRxdW91ZC5sb2NhbDCCASIwDQYJKoZIhvcNAQEB" >> nota/app/src/main/res/raw/cert.pem
+          echo "BQADggEPADCCAQoCggEBALnq2OJ5Bj0SUGkHI6Pq3po/oFYu5ZpfV9Hdgr1wz7+N" >> nota/app/src/main/res/raw/cert.pem
+          echo "CvHer386mxMizIg/h9etz95Z5WeRTQ5fAEmLiTGoFzy095nIsOZ3NkhZO5QFnpfY" >> nota/app/src/main/res/raw/cert.pem
+          echo "oTMyP8LmcqMoGCx1/uh6BkIyPSZezUIOnpzl0n59XX5IZ2M2znl7SCyz3anhQYNf" >> nota/app/src/main/res/raw/cert.pem
+          echo "/BMol1pcQpmqnZ3QyOSxgPHknhR3ux7jxW2hyyggVqPm3x8CchrOHFc6jpakTAFx" >> nota/app/src/main/res/raw/cert.pem
+          echo "voYx1ISyFcX41Q7YIaTvTg7QKm8oEzLxdZytGAQFVzPpLWaj7IMMbbL8hIYFI+1j" >> nota/app/src/main/res/raw/cert.pem
+          echo "64yDBoPEvk/XIAlt4sy/Z4b85+vOhh/x3HCpgQIBkSMCAwEAAaNlMGMwCQYDVR0T" >> nota/app/src/main/res/raw/cert.pem
+          echo "BAIwADAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwNwYDVR0RBDAwLoIP" >> nota/app/src/main/res/raw/cert.pem
+          echo "bmV4dGNsb3VkLmxvY2FsggVsb2NhbIIJbmV4dGNsb3Vkgglsb2NhbGhvc3QwDQYJ" >> nota/app/src/main/res/raw/cert.pem
+          echo "KoZIhvcNAQELBQADggEBABDuYl+pGTlAw8fo7RVjpQezBFsDdWNcCzApynk/48WP" >> nota/app/src/main/res/raw/cert.pem
+          echo "lactcxb3KUQHSes5BjUPLSUN1fYAsUZP5h4IA0lA3urs8QM/pwe0DiggBtW4G1Tu" >> nota/app/src/main/res/raw/cert.pem
+          echo "OuRKnKK2ndb6mFaeY43AiYKa7RQW5zKdoetfbhQp4EG8k3G5AB+Mu/3xL+RvnBzn" >> nota/app/src/main/res/raw/cert.pem
+          echo "l9NKsjurcZKaI/TYTyKpXKHUT4ecTM3JuisOKiCc8kjTaH3SaLINDdtxdtrrStRe" >> nota/app/src/main/res/raw/cert.pem
+          echo "bJURqxSfS7mIGec1fsWlMiKvEOTAC00Kyk8URGcUCkKRGRJMcFvugnk6oclfUaeX" >> nota/app/src/main/res/raw/cert.pem
+          echo "KU6JN6mNiufHiQoi07OA+9Uza/U4A8X40vfqLXpvENw=" >> nota/app/src/main/res/raw/cert.pem
           echo "-----END CERTIFICATE-----" >> nota/app/src/main/res/raw/cert.pem
 
-      - name: Build with Gradle in nota folder
-        working-directory: ./nota
-        run: ./gradlew assembleDebug
-
-
-      # 使用 working-directory 代替手动 cd
       - name: Build with Gradle in nota folder
         working-directory: ./nota
         run: ./gradlew assembleDebug
