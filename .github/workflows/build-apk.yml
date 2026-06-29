@@ -1,0 +1,39 @@
+name: Android CI (Cloud Build APK)
+
+on:
+  push:
+    branches: [ "main" ] # 当你向 main 分支推送代码时触发编译
+  workflow_dispatch: # 允许你在 GitHub 网页上进行手动点击编译
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 下载仓库中的代码到云端服务器
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. 设置云端服务器的 Java 环境（Android 编译必需）
+      - name: set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      # 3. 赋予 Gradle 编译脚本执行权限
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 4. 执行编译命令（生成 Debug 测试版 APK）
+      # 如果你的项目有子文件夹，请确保 gradlew 在根目录。如果需要正式版，可改为 assembleRelease
+      - name: Build with Gradle
+        run: ./gradlew assembleDebug
+
+      # 5. 把编译好的 APK 文件上传到 GitHub 网页，供你下载
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-android-app
+          path: nota/app/build/outputs/apk/debug/*.apk  # 根据你之前的路径，修改为你的 apk 生成路径
