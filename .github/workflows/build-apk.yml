@@ -13,21 +13,21 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 这里改成了 java-version: '8'，完美兼容老版 Gradle
-      - name: set up JDK 8
+      # 统一了注释和实际配置（这里以实际运行的 JDK 17 为准）
+      - name: set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '8'
+          java-version: '17'
           distribution: 'temurin'
           cache: gradle
 
       - name: Grant execute permission for gradlew
         run: chmod +x nota/gradlew
 
+      # 使用 working-directory 代替手动 cd
       - name: Build with Gradle in nota folder
-        run: |
-          cd nota
-          ./gradlew assembleDebug
+        working-directory: ./nota
+        run: ./gradlew assembleDebug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
