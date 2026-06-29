@@ -10,29 +10,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 下载整个仓库（这是必须的，否则云端没有代码基础）
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. 设置 Java 环境
-      - name: set up JDK 17
+      # 这里改成了 java-version: '8'，完美兼容老版 Gradle
+      - name: set up JDK 8
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '8'
           distribution: 'temurin'
           cache: gradle
 
-      # 3. 注意：赋予 nota 目录下的 gradlew 执行权限
       - name: Grant execute permission for gradlew
         run: chmod +x nota/gradlew
 
-      # 4. 注意：切换到 nota 目录下执行编译命令
       - name: Build with Gradle in nota folder
         run: |
           cd nota
           ./gradlew assembleDebug
 
-      # 5. 上传编译生成的 APK
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
