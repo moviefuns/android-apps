@@ -14,7 +14,7 @@
     <domain-config>
         <domain includeSubdomains="true">103.233.74.57</domain>
         <trust-anchors>
-            <certificates src="@raw/cert.pem"/>
+            <certificates src="@raw/cert"/>
             <certificates src="system" />
         </trust-anchors>
     </domain-config>
